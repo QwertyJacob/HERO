@@ -208,12 +208,12 @@ def get_masks_1(
     Returns:
         zda_mask -> vertical auto-explicative_mask
 
-        known_classes_mask -> HORIZONTAL MASK, it indicates
+        known_classes_ -> it indicates
         which classes are not ZdAs,helps
         to evaluate the closed set prediction accuracy.
 
-        unknown_1_mask -> VERTICAL_MASK, it indicates the ZdA
-        INSTANCES and the QUERY INSTANCES in the batch.
+        unknown_1_mask -> VERTICAL_MASK, it indicates the samples that are
+        either ZdA INSTANCES or QUERY INSTANCES (or both) in the batch.
 
         active_query_mask -> VERTICAL_MASK, it indicates the
         QUERY INSTANCES in the batch that are used to evaluate
@@ -227,7 +227,7 @@ def get_masks_1(
         type_B_mask)
 
     # known samples mask:
-    known_classes_mask = \
+    known_classes = \
         labels[~zda_mask, 1].unique().long()
 
     # query mask:
@@ -243,7 +243,7 @@ def get_masks_1(
         zda_mask,
         query_mask)
 
-    return zda_mask, known_classes_mask, unknown_1_mask, active_query_mask
+    return zda_mask, known_classes, unknown_1_mask, active_query_mask
 
 
 

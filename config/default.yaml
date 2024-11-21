@@ -1,0 +1,49 @@
+seed: 1234
+
+pretraining:
+  wandb: False
+  run_name: 'Pretraining'
+  save_model: False
+  report_step_frequency: 100 
+  datadir: synthetic_data
+  dataset: M_12_m_5_DIM_15_N_30000
+  natural_inputs_dim: 15 # should be the less or equal than the dataset's DIM 
+  noise: 10
+  # Number of classes per task :
+  # two of them are ZdAs, one is a type B and the other a type A
+  N_WAY: 5
+  N_SHOT: 5   # Number of samples per class in the support set
+  N_QUERY: 20  # Number of samples per class in the query set
+  n_train_tasks: 500    # For speedy tests, reduce here..
+  n_eval_tasks: 100     # For speedy tests, reduce here..
+  num_workers: 4
+  h_dim: 1024
+  norm: batch
+  dropout: 0.1
+  device: cuda
+  processor_attention_heads: 8
+  pos_weight_1: 2.5  # weight of type B zdas for BCE loss 
+  pos_weight_2: 5    # weight of type A zdas for BCE loss
+  lr: 0.001
+  n_epochs: 60
+  patience: 8
+  max_prototype_buffer_micro: 60    # maximum number of discoverable micro-clusters
+  max_prototype_buffer_macro: 12    # maximum number of discoverable macro-clusters
+  lambda_os: 1   # relative weight of open-set vs closed-set loss
+  balanced_acc_n_w: 0.5  # negative relative weight of zdas for computing the balanced accuracy
+  attr_w: 1   # weight of the attractive force in manifold learning.
+  rep_w: 1   # weight of the repulsive force in manifold learning.
+
+hyperparameters:
+  max_prototype_buffer_micro: 60
+  max_prototype_buffer_macro: 12
+  lr: 0.001
+  n_epochs: 60
+  norm: "batch"
+  dropout: 0.1
+  patience: 8
+  lambda_os: 1
+  N_SHOT: 5
+  N_QUERY: 15
+logging:
+  report_step_frequency: 100
