@@ -580,13 +580,15 @@ def pretrain(cfg, train_loader, test_loader):
                     os_1_loss, \
                     hiddens_1, \
                     decoded_1 = first_phase_simple(
-                                        sample_batch)
+                        cfg,
+                        sample_batch)
 
                 # PHASE 2
                 proc_2_loss, \
                     os_2_loss, \
                     hiddens_2, \
                     decoded_2 = second_phase_simple(
+                        cfg,
                         sample_batch,
                         hiddens_1)
 
