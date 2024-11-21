@@ -267,10 +267,11 @@ def init_logging(cfg, train_loader, test_loader):
 
 def first_phase_simple(
         cfg,
-        sample_batch):
-    global cs_cm_1
-    global os_cm_1
-    global metrics_dict
+        sample_batch,
+        eval=False):
+    global cs_cm_1, os_cm_1, metrics_dict
+    global eval_zda_labels, eval_zda_preds
+
 
     # get masks: THESE ARE NOT COMPLEMENTARY!
     zda_mask, _, \
@@ -336,6 +337,10 @@ def first_phase_simple(
         predicted_zdas,
         zda_mask[zda_or_query_mask].float().unsqueeze(-1))
 
+    if eval:
+        eval_zda_labels.append(zda_mask[zda_or_query_mask].long())
+        eval_zda_preds.append((predicted_zdas > 0.5).long())
+
     # inverse transform cs preds (just for reporting)
     logits_wrt_all_classes = utils.inverse_transform_preds(
         transormed_preds=logits_wrt_known_classes[known_class_query_mask],
@@ -395,7 +400,7 @@ def second_phase_simple(
         eval=False):
 
     global cs_cm_2, os_cm_2, metrics_dict
-    global eval_zda_labels, eval_type_a_labels, eval_zda_preds, eval_type_a_preds
+    global eval_type_a_labels, eval_type_a_preds
     
     type_A_mask, _, \
         type_A_or_query_mask, non_type_A_query_mask = utils.get_masks_2(
@@ -451,6 +456,10 @@ def second_phase_simple(
     type_A_detect_loss = decoder_2b_criterion(
         predicted_type_As,
         type_A_mask[type_A_or_query_mask].float().unsqueeze(-1))
+
+    if eval:
+        eval_type_a_labels.append(type_A_mask[type_A_or_query_mask].float().unsqueeze(-1))
+        eval_type_a_preds.append(predicted_type_As.detach())
 
     # inverse transform cs preds (just for reporting)
     logits_wrt_all_macro_classes = utils.inverse_transform_preds(
@@ -636,7 +645,8 @@ def pretrain(cfg, train_loader, test_loader):
                     hiddens_1, \
                     micro_known_logits = first_phase_simple(
                         cfg,
-                        sample_batch)
+                        sample_batch,
+                        eval=True)
 
                 # PHASE 2
                 proc_2_loss, \
@@ -678,6 +688,15 @@ def pretrain(cfg, train_loader, test_loader):
 
             # Checking for improvement
             curr_TNR = np.array(metrics_dict['OS_2_B_accuracies']).mean()
+
+            utils.report_auc_stuff(
+                eval_zda_labels,
+                eval_zda_preds,
+                eval_type_a_labels,
+                eval_type_a_preds,
+                wb,
+                wandb,
+                step)
 
             if curr_TNR > max_eval_TNR:
                 max_eval_TNR = curr_TNR

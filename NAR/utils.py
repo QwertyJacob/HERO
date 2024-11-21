@@ -40,6 +40,45 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
 
+def report_auc_stuff(eval_type_a_labels, eval_type_a_preds, eval_zda_labels, eval_zda_preds, wb, wandb, step):
+    eval_type_a_labels = torch.cat(eval_type_a_labels, dim=0).cpu().numpy()
+    eval_type_a_preds = torch.cat(eval_type_a_preds, dim=0).cpu().numpy()
+
+    eval_zda_labels = torch.cat(eval_zda_labels, dim=0).cpu().numpy()
+    eval_zda_preds = torch.cat(eval_zda_preds, dim=0).cpu().numpy()
+
+    zda_roc_auc, zda_pr_auc = calculate_auc_metrics(eval_zda_labels, eval_zda_preds)
+    type_a_roc_auc, type_a_pr_auc = calculate_auc_metrics(eval_type_a_labels, eval_type_a_preds)
+
+    if wb:
+        wandb.log(
+            {'EVAL_ZDA_ROC_AUC': zda_roc_auc,
+             'EVAL_ZDA_PR_AUC': zda_pr_auc,
+             'EVAL_Type_A_ROC_AUC': type_a_roc_auc,
+             'EVAL_Type_A_PR_AUC': type_a_pr_auc},
+             step=step)
+
+
+def calculate_auc_metrics(labels, logits):
+    """
+    Calculate the AUC for ROC and precision-recall curves.
+
+    Args:
+        labels (list or np.array): Binary ground truth labels.
+        logits (list or np.array): Binary prediction logits.
+
+    Returns:
+        tuple: AUC of ROC curve, AUC of precision-recall curve.
+    """
+    fpr, tpr, _ = roc_curve(labels, logits)
+    roc_auc = auc(fpr, tpr)
+    
+    precision, recall, _ = precision_recall_curve(labels, logits)
+    pr_auc = auc(recall, precision)
+    
+    return roc_auc, pr_auc
+
+
 def init_bot_iot_ds_from_dir(root_dir):
     micro_labels = []
     macro_labels = []
