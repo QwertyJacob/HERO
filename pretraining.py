@@ -1,3 +1,38 @@
+"""
+Copyright (c) 2022 Jesus Cevallos, University of Insubria
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Except as contained in this notice, the name of the University of Insubria
+shall not be used in advertising or otherwise to promote the sale, use or other
+dealings in this Software without prior written authorization from the
+University of Insubria.
+
+The University of Insubria retains all rights to the Software, including but not
+limited to all patent rights, trade secret rights, know-how, and other
+intellectual property rights.
+
+Non-commercial use of the Software is permitted, but the User must cite the
+Software in any publication or presentation that uses the Software, and must
+not use the Software for commercial purposes without first obtaining the
+written permission of the University of Insubria.
+"""
 import wandb
 import pandas as pd
 import torch
@@ -356,12 +391,11 @@ def first_phase_simple(
 def second_phase_simple(
         cfg, 
         sample_batch,
-        hiddens_1):
+        hiddens_1,
+        eval=False):
 
-    global cs_cm_2
-    global os_cm_2
-    global metrics_dict
-
+    global cs_cm_2, os_cm_2, metrics_dict
+    global eval_zda_labels, eval_type_a_labels, eval_zda_preds, eval_type_a_preds
     
     type_A_mask, _, \
         type_A_or_query_mask, non_type_A_query_mask = utils.get_masks_2(
@@ -469,7 +503,9 @@ def second_phase_simple(
 def pretrain(cfg, train_loader, test_loader):
     global cs_cm_1, os_cm_1, cs_cm_2, os_cm_2, metrics_dict
     global max_eval_TNR, epochs_without_improvement
+    global eval_zda_labels, eval_type_a_labels, eval_zda_preds, eval_type_a_preds
 
+    step = 0
     max_eval_TNR = torch.zeros(1, device=device)
     epochs_without_improvement = 0
 
@@ -497,6 +533,9 @@ def pretrain(cfg, train_loader, test_loader):
 
         # go!
         for batch_idx, sample_batch in enumerate(train_loader):
+
+            step += 1
+
             # go to cuda:
             sample_batch = sample_batch[0].to(device), sample_batch[1].to(device)
 
@@ -528,9 +567,6 @@ def pretrain(cfg, train_loader, test_loader):
             os_loss.backward()
             os_optimizer.step()
 
-            # Reporting
-            step = batch_idx + (epoch * train_loader.sampler.n_tasks)
-
             if step % cfg.pretraining.report_step_frequency == 0:
                 utils.reporting_simple(
                     'train',
@@ -553,6 +589,7 @@ def pretrain(cfg, train_loader, test_loader):
                     os_cm_2=os_cm_2.cpu(),
                     wb=wb,
                     wandb=wandb,
+                    step=step,
                     complete_micro_classes=micro_classes,
                     complete_macro_classes=macro_classes
                     )
@@ -579,8 +616,17 @@ def pretrain(cfg, train_loader, test_loader):
             # reset metrics dict
             metrics_dict = utils.reset_metrics_dict()
 
+            # reset labels and logits for ROC AUC
+            eval_zda_labels = []
+            eval_type_a_labels = []
+            eval_zda_preds = []
+            eval_type_a_preds = []
+
             # go!
             for batch_idx, sample_batch in enumerate(test_loader):
+
+                step += 1
+
                 # go to cuda:
                 sample_batch = sample_batch[0].to(device), sample_batch[1].to(device)
 
@@ -599,12 +645,11 @@ def pretrain(cfg, train_loader, test_loader):
                     decoded_2 = second_phase_simple(
                         cfg,
                         sample_batch,
-                        hiddens_1)
-
-                # Reporting
-                step = batch_idx + (epoch * test_loader.sampler.n_tasks)
+                        hiddens_1,
+                        eval=True)
 
                 if step % cfg.pretraining.report_step_frequency == 0:
+
                     utils.reporting_simple(
                             'eval',
                             epoch,
@@ -626,8 +671,9 @@ def pretrain(cfg, train_loader, test_loader):
                     os_cm_2=os_cm_2.cpu(),
                     wb=wb,
                     wandb=wandb,
+                    step=step,
                     complete_micro_classes=micro_classes,
-                    complete_macro_classes=macro_classes
+                    complete_macro_classes=macro_classes,
                 )
 
             # Checking for improvement
@@ -643,7 +689,7 @@ def pretrain(cfg, train_loader, test_loader):
             if epochs_without_improvement >= cfg.pretraining.patience:
                 print(f'Early stopping at step {step}')
                 if wb:
-                    wandb.log({'Early stopping at episode': step})
+                    wandb.log({'Early stopping at step': step}, step=step)
                 break
 
     print(f'max_eval_TNR: {max_eval_TNR}')

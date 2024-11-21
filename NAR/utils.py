@@ -1,7 +1,43 @@
+"""
+Copyright (c) 2022 Jesus Cevallos, University of Insubria
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Except as contained in this notice, the name of the University of Insubria
+shall not be used in advertising or otherwise to promote the sale, use or other
+dealings in this Software without prior written authorization from the
+University of Insubria.
+
+The University of Insubria retains all rights to the Software, including but not
+limited to all patent rights, trade secret rights, know-how, and other
+intellectual property rights.
+
+Non-commercial use of the Software is permitted, but the User must cite the
+Software in any publication or presentation that uses the Software, and must
+not use the Software for commercial purposes without first obtaining the
+written permission of the University of Insubria.
+"""
 import os
 import pandas as pd
 import torch
 import numpy as np
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
 
 def init_bot_iot_ds_from_dir(root_dir):
@@ -161,6 +197,7 @@ def get_FSL_mask(labels, N_QUERY, device):
 
     return query_mask
 
+
 def get_gennaro_FSL_mask(labels, N_QUERY, device):
     """
     The unique change wrt to the method above is the index of 
@@ -246,8 +283,6 @@ def get_masks_1(
     return zda_mask, known_classes, unknown_1_mask, active_query_mask
 
 
-
-
 def get_gennaro_masks(
     labels, N_QUERY, device='cpu'):
     """
@@ -286,7 +321,6 @@ def get_gennaro_masks(
         query_mask)
 
     return zda_mask, known_classes_mask, unknown_1_mask, active_query_mask
-
 
 
 def get_masks_2(
@@ -336,62 +370,49 @@ def reporting_simple(
         suffix,
         epoch,
         metrics_dict,
-        batch_idx,
+        step,
         wb,
         wandb):
 
     if wb:
         wandb.log(
-            {'epoch: ': epoch,
-             'step: ': batch_idx})
+            {'epoch: ': epoch}, step=step)
         wandb.log(
             {f'mean dec_1_loss_a_{suffix}: ':
-             np.array(metrics_dict['losses_1a']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['losses_1a']).mean()}, step=step)
         wandb.log(
             {f'mean proc_reg_loss1 {suffix}: ':
-             np.array(metrics_dict['proc_reg_loss1']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['proc_reg_loss1']).mean()}, step=step)
         wandb.log(
             {f'mean dec_1_loss_b_{suffix}: ':
-             np.array(metrics_dict['losses_1b']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['losses_1b']).mean()}, step=step)
         wandb.log(
             {f'CS1 accuracy_{suffix}: ':
-             np.array(metrics_dict['CS_accuracies']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['CS_accuracies']).mean()}, step=step)
         wandb.log(
             {f'OS1 accuracy_{suffix}: ':
-             np.array(metrics_dict['OS_accuracies']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['OS_accuracies']).mean()}, step=step)
         wandb.log(
             {f'OS1 Bal. accuracy_{suffix}: ':
-             np.array(metrics_dict['OS_B_accuracies']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['OS_B_accuracies']).mean()}, step=step)
         wandb.log(
             {f'mean dec_2_loss_a_{suffix}: ':
-             np.array(metrics_dict['losses_2a']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['losses_2a']).mean()}, step=step)
         wandb.log(
             {f'mean proc_reg_loss2 {suffix}: ':
-             np.array(metrics_dict['proc_reg_loss2']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['proc_reg_loss2']).mean()}, step=step)
         wandb.log(
             {f'mean dec_2_loss_b_{suffix}: ':
-             np.array(metrics_dict['losses_2b']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['losses_2b']).mean()}, step=step)
         wandb.log(
             {f'CS2 accuracy_{suffix}: ':
-             np.array(metrics_dict['CS_2_accuracies']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['CS_2_accuracies']).mean()}, step=step)
         wandb.log(
             {f'OS2 accuracy_{suffix}: ':
-             np.array(metrics_dict['OS_2_accuracies']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['OS_2_accuracies']).mean()}, step=step)
         wandb.log(
             {f'OS2 Bal. accuracy_{suffix}: ':
-             np.array(metrics_dict['OS_2_B_accuracies']).mean(),
-             'step: ': batch_idx})
+             np.array(metrics_dict['OS_2_B_accuracies']).mean()}, step=step)
 
     else:
         # print(f'mean dec_1_loss_a_{suffix}: ', np.array(losses_1a).mean())
@@ -412,81 +433,80 @@ def reporting_simple_optimized(
         suffix,
         epoch,
         metrics_dict,
-        batch_idx,
+        step,
         report_frequency,
         wb,
         wandb):
 
-    if batch_idx-report_frequency < 0:
+    if step-report_frequency < 0:
         init_idx = 0
     else:
-        init_idx = batch_idx-report_frequency
+        init_idx = step-report_frequency
     if wb:
         wandb.log(
-            {'epoch: ': epoch,
-             'step: ': batch_idx})
+            {'epoch: ': epoch}, step=step)
         wandb.log(
             {f'mean dec_1_loss_a_{suffix}: ':
-             metrics_dict['losses_1a'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['losses_1a'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'mean proc_reg_loss1 {suffix}: ':
-             metrics_dict['proc_reg_loss1'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['proc_reg_loss1'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'mean dec_1_loss_b_{suffix}: ':
-             metrics_dict['losses_1b'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['losses_1b'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'CS1 accuracy_{suffix}: ':
-             metrics_dict['CS_accuracies'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['CS_accuracies'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'OS1 accuracy_{suffix}: ':
-             metrics_dict['OS_accuracies'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['OS_accuracies'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'OS1 Bal. accuracy_{suffix}: ':
-             metrics_dict['OS_B_accuracies'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['OS_B_accuracies'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'mean dec_2_loss_a_{suffix}: ':
-             metrics_dict['losses_2a'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['losses_2a'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'mean proc_reg_loss2 {suffix}: ':
-             metrics_dict['proc_reg_loss2'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['proc_reg_loss2'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'mean dec_2_loss_b_{suffix}: ':
-             metrics_dict['losses_2b'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['losses_2b'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'CS2 accuracy_{suffix}: ':
-             metrics_dict['CS_2_accuracies'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['CS_2_accuracies'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'OS2 accuracy_{suffix}: ':
-             metrics_dict['OS_2_accuracies'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['OS_2_accuracies'][init_idx:step+1].mean().item()},
+            step=step)
         wandb.log(
             {f'OS2 Bal. accuracy_{suffix}: ':
-             metrics_dict['OS_2_B_accuracies'][init_idx:batch_idx+1].mean().item(),
-             'step: ': batch_idx})
+             metrics_dict['OS_2_B_accuracies'][init_idx:step+1].mean().item()},
+            step=step)
 
     else:
         # print(f'mean dec_1_loss_a_{suffix}: ', losses_1a.mean().item())
         # print(f'mean dec_1_loss_b_{suffix}: ', losses_1b.mean().item())
         print(f'CS accuracy_{suffix}: ',
-              metrics_dict['CS_accuracies'][init_idx:batch_idx+1].mean().item())
+              metrics_dict['CS_accuracies'][init_idx:step+1].mean().item())
         print(f'OS accuracy_{suffix}: ',
-              metrics_dict['OS_B_accuracies'][init_idx:batch_idx+1].mean().item())
+              metrics_dict['OS_B_accuracies'][init_idx:step+1].mean().item())
         # print(f'mean dec_2_loss_a_{suffix}: ', losses_2a.mean().item())
         # print(f'mean dec_2_loss_b_{suffix}: ', losses_2b.mean().item())
         print(f'CS2 accuracy_{suffix}: ',
-              metrics_dict['CS_2_accuracies'][init_idx:batch_idx+1].mean().item())
+              metrics_dict['CS_2_accuracies'][init_idx:step+1].mean().item())
         print(f'OS2 accuracy_{suffix}: ',
-              metrics_dict['OS_2_B_accuracies'][init_idx:batch_idx+1].mean().item())
+              metrics_dict['OS_2_B_accuracies'][init_idx:step+1].mean().item())
 
 
 def reporting_gennaro(
@@ -572,7 +592,7 @@ def check_early_stop_simple():
     if epochs_without_improvement >= patience:
         print(f'Early stopping at epoch {epoch}')
         if wb:
-            wandb.log({'Early stopping at epoch': epoch})
+            wandb.log({'Early stopping at epoch': epoch}, step=epoch)
         return True
 
     return False

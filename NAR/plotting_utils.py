@@ -1,3 +1,38 @@
+"""
+Copyright (c) 2022 Jesus Cevallos, University of Insubria
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Except as contained in this notice, the name of the University of Insubria
+shall not be used in advertising or otherwise to promote the sale, use or other
+dealings in this Software without prior written authorization from the
+University of Insubria.
+
+The University of Insubria retains all rights to the Software, including but not
+limited to all patent rights, trade secret rights, know-how, and other
+intellectual property rights.
+
+Non-commercial use of the Software is permitted, but the User must cite the
+Software in any publication or presentation that uses the Software, and must
+not use the Software for commercial purposes without first obtaining the
+written permission of the University of Insubria.
+"""
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import PCA
@@ -36,7 +71,8 @@ def plot_hidden_space(
         cat='Macro',
         nl_labels=None,
         wb=False,
-        wandb=None):
+        wandb=None,
+        step=0):
 
     # Create an iterator that cycles through the colors
     color_iterator = itertools.cycle(colors)
@@ -98,14 +134,12 @@ def plot_hidden_space(
     plt.tight_layout()
 
     if wb:
-        wandb.log({f"{mod}: Latent Space of {cat} attacks": wandb.Image(plt)})
+        wandb.log({f"{mod}: Latent Space of {cat} attacks": wandb.Image(plt)}, step=step, commit=False)
     else:
         plt.show()
 
     plt.cla()
     plt.close()
-
-
 
 
 def plot_hidden_space_gennaro(
@@ -165,7 +199,7 @@ def plot_hidden_space_gennaro(
     plt.tight_layout()
 
     if wb:
-        wandb.log({f"{mod}: Latent Space Representations": wandb.Image(plt)})
+        wandb.log({f"{mod}: Latent Space Representations": wandb.Image(plt)}, commit=False)
     else:
         plt.show()
 
@@ -180,7 +214,8 @@ def plot_scores_reduction(
         cat='Macro',
         nl_labels=None,
         wb=False,
-        wandb=None):
+        wandb=None,
+        step=0):
 
     # Create an iterator that cycles through the colors
     color_iterator = itertools.cycle(colors)
@@ -242,7 +277,7 @@ def plot_scores_reduction(
     plt.tight_layout()
 
     if wb:
-        wandb.log({f"{mod}: PCA of {cat} ass. scores": wandb.Image(plt)})
+        wandb.log({f"{mod}: PCA of {cat} ass. scores": wandb.Image(plt)}, step=step, commit=False)
     else:
         plt.show()
 
@@ -308,7 +343,7 @@ def plot_scores_reduction_gennaro(
     plt.tight_layout()
 
     if wb:
-        wandb.log({f"{mod}: PCA of ass. scores": wandb.Image(plt)})
+        wandb.log({f"{mod}: PCA of ass. scores": wandb.Image(plt)}, commit=False)
     else:
         plt.show()
 
@@ -324,7 +359,8 @@ def plot_confusion_matrix(
         wandb=None,
         norm=True,
         dims=(10,10),
-        classes=None):
+        classes=None,
+        step=0):
 
     if norm:
         # Rapresented classes:
@@ -358,7 +394,7 @@ def plot_confusion_matrix(
 
     plt.title(f'{phase} {mode} set Confusion Matrix')
     if wb:
-        wandb.log({f'{phase} {mode} set Confusion Matrix': wandb.Image(plt)})
+        wandb.log({f'{phase} {mode} set Confusion Matrix': wandb.Image(plt)}, step=step, commit=False)
     else:
         plt.show()
     plt.cla()
@@ -481,10 +517,11 @@ def super_plotting_function(
         os_cm_2,
         wb,
         wandb,
+        step,
         nl_micro_labels=None,
         nl_macro_labels=None,
         complete_micro_classes=None,
-        complete_macro_classes=None
+        complete_macro_classes=None,
         ):
 
     plot_hidden_space(
@@ -494,7 +531,8 @@ def super_plotting_function(
             nl_labels=nl_micro_labels,
             cat='Micro',
             wb=wb,
-            wandb=wandb)
+            wandb=wandb,
+            step=step)
 
     plot_scores_reduction(
         mod=phase,
@@ -503,7 +541,8 @@ def super_plotting_function(
         nl_labels=nl_micro_labels,
         cat='Micro',
         wb=wb,
-        wandb=wandb)
+        wandb=wandb,
+            step=step)
 
     plot_hidden_space(
         mod=phase,
@@ -512,7 +551,8 @@ def super_plotting_function(
         nl_labels=nl_macro_labels,
         cat='Macro',
         wb=wb,
-        wandb=wandb)
+        wandb=wandb,
+            step=step)
 
     plot_scores_reduction(
         mod=phase,
@@ -521,7 +561,8 @@ def super_plotting_function(
         nl_labels=nl_macro_labels,
         cat='Macro',
         wb=wb,
-        wandb=wandb)
+        wandb=wandb,
+            step=step)
 
     os_labels_micro = ['Known', 'Unknown']
     os_labels_macro = ['Type B ZdA', 'Type A ZdA']
@@ -534,7 +575,8 @@ def super_plotting_function(
             wandb=wandb,
             norm=False,
             dims=(15,15),
-            classes=complete_micro_classes)
+            classes=complete_micro_classes,
+            step=step)
 
     plot_confusion_matrix(
             cm=os_cm_1,
@@ -544,7 +586,8 @@ def super_plotting_function(
             wandb=wandb,
             norm=False,
             dims=(4,4),
-            classes=os_labels_micro)
+            classes=os_labels_micro,
+            step=step)
 
     plot_confusion_matrix(
             cm=cs_cm_2,
@@ -554,7 +597,8 @@ def super_plotting_function(
             wandb=wandb,
             norm=False,
             dims=(4,4),
-            classes=complete_macro_classes)
+            classes=complete_macro_classes,
+            step=step)
 
     plot_confusion_matrix(
             cm=os_cm_2,
@@ -564,7 +608,8 @@ def super_plotting_function(
             wandb=wandb,
             norm=False,
             dims=(4,4),
-            classes=os_labels_macro)
+            classes=os_labels_macro,
+            step=step)
 
 
 
