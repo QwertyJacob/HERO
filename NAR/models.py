@@ -895,6 +895,12 @@ class SimmilarityNet(nn.Module):
         self.fc2 = nn.Linear(h_dim // 2, 1)
 
     def forward(self, x1, x2):
+        """
+        Notice this is a version of "relational bottleneck" inductive bias
+        as defined by https://arxiv.org/abs/2309.06629.
+        Provided that we have an encoder before this layerm, universal representation
+        is proved https://arxiv.org/abs/2402.08856
+        """
         input_to_symm = torch.abs(x1 - x2)
         symm = self.fc1(input_to_symm)
         symm = self.act(symm)

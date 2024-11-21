@@ -1,7 +1,9 @@
 seed: 1234
+override: ""
 
 pretraining:
   wandb: False
+  track_gradients: False  # requires wandb to be True
   run_name: 'Pretraining'
   save_model: False
   report_step_frequency: 100 

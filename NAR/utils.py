@@ -216,7 +216,7 @@ def get_masks_1(
         either ZdA INSTANCES or QUERY INSTANCES (or both) in the batch.
 
         active_query_mask -> VERTICAL_MASK, it indicates the
-        QUERY INSTANCES in the batch that are used to evaluate
+        QUERY INSTANCES that are not ZdAs and that are used to evaluate
         the accuracy of our CLOSED SET CLASSIFICATION.
     """
     # ZdA masks:
@@ -252,16 +252,16 @@ def get_gennaro_masks(
     labels, N_QUERY, device='cpu'):
     """
     Returns:
-        zda_mask -> vertical auto-explicative_mask
+        zda_mask -> auto-explicative_mask
 
-        known_classes_mask -> HORIZONTAL MASK, it indicates
+        known_classes_mask ->  it indicates
         which classes are not ZdAs,helps
         to evaluate the closed set prediction accuracy.
 
-        unknown_1_mask -> VERTICAL_MASK, it indicates the ZdA
+        unknown_1_mask ->  it indicates the ZdA
         INSTANCES and the QUERY INSTANCES in the batch.
 
-        active_query_mask -> VERTICAL_MASK, it indicates the
+        active_query_mask -> , it indicates the
         QUERY INSTANCES in the batch that are used to evaluate
         the accuracy of our CLOSED SET CLASSIFICATION.
     """
@@ -295,22 +295,22 @@ def get_masks_2(
     Returns:
         type_A_mask -> vertical auto-explicative_mask
 
-        known_macro_classes_mask -> HORIZONTAL MASK, it indicates
+        known_macro_classes -> it indicates
         which MACRO classes are not type A ZdAs, helps
         to evaluate the closed set prediction accuracy.
 
-        unknown_2_mask -> VERTICAL_MASK, it indicates the Type A ZdA
-        INSTANCES and the QUERY INSTANCES in the batch.
+        unknown_2_mask -> it indicates the samples that are either Type A ZdA
+        INSTANCES or QUERY INSTANCES in the batch.
 
-        active_query_mask -> VERTICAL_MASK, it indicates the
-        QUERY INSTANCES in the batch that are used to evaluate
+        active_query_mask ->  it indicates the
+        non-type_A Zdas that are QUERY INSTANCES in the batch. These are used to evaluate
         the accuracy of our CLOSED SET CLASSIFICATION.
     """
     # ZdA masks:
     type_A_mask = labels[:, 2].bool()
 
     # known samples mask:
-    known_macro_classes_mask = \
+    known_macro_classes = \
         labels[~type_A_mask, 0].unique().long()
 
     # query mask:        
@@ -327,7 +327,7 @@ def get_masks_2(
         query_mask)
 
     return type_A_mask, \
-        known_macro_classes_mask, \
+        known_macro_classes, \
         unknown_2_mask, \
         active_query_mask
 
