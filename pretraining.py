@@ -51,13 +51,13 @@ import NAR.masking as masking
 import NAR.models as models
 
 
-def save_stuff(prefix):
+def save_stuff(cfg, prefix):
     torch.save(
         processor_1.state_dict(),
-        'models/'+prefix+'_proc_1.pt')
+        cfg.models_dir+'/'+prefix+'_proc_1.pt')
     torch.save(
         processor_2.state_dict(),
-        'models/'+prefix+'_proc_2.pt')
+        cfg.models_dir+'/'+prefix+'_proc_2.pt')
 
 def init_data(cfg):
     global micro_zdas, micro_type_A_ZdAs, micro_type_B_ZdAs, micro_classes, macro_classes
@@ -701,7 +701,7 @@ def pretrain(cfg, train_loader, test_loader):
             if curr_TNR > max_eval_TNR:
                 max_eval_TNR = curr_TNR
                 epochs_without_improvement = 0
-                if cfg.pretraining.save_model: save_stuff(run_name)
+                if cfg.pretraining.save_model: save_stuff(cfg, run_name)
             else:
                 epochs_without_improvement += 1
 

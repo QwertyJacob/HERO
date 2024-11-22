@@ -1,2 +1,5 @@
 pretraining:
   wandb: True
+fine_tuning:
+  wandb: True
+  datadir: /home/jovyan/shared/jesus/datasets/BoT_IoT_imgs

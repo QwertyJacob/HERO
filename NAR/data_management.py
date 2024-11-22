@@ -533,7 +533,7 @@ class RealFewShotDataset(Dataset):
     def load_single_image(self, idx):
         file_name = self.file_names[idx]
         file_path = os.path.join(self.root_dir, file_name)
-        image = torch.load(file_path)
+        image = torch.load(file_path, weights_only=True)
         image = image.unsqueeze(0) / 255
         image = torch.cat([image, torch.zeros((2, 512, 512))]).unsqueeze(0)
         return image

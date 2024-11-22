@@ -4,3 +4,4 @@ __pycache__
 outputs
 .vscode
 wandb
+reduced_data_mappings

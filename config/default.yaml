@@ -1,6 +1,6 @@
 seed: 1234
 override: ""
-
+models_dir: models
 pretraining:
   wandb: False
   track_gradients: False  # requires wandb to be True
@@ -36,16 +36,89 @@ pretraining:
   attr_w: 1   # weight of the attractive force in manifold learning.
   rep_w: 1   # weight of the repulsive force in manifold learning.
 
-hyperparameters:
-  max_prototype_buffer_micro: 60
-  max_prototype_buffer_macro: 12
-  lr: 0.001
-  n_epochs: 60
-  norm: "batch"
+
+fine_tuning:
+  wandb: False
+  track_gradients: False  # requires wandb to be True
+  run_name: 'Training_EncDec'
+  pretrained_processors: True
+  save_model: False
+  pretrained_processor_1: SufflePretrain_H1024_proc_1.pt
+  pretrained_processor_2: SufflePretrain_H1024_proc_2.pt
+  # Simulating low-training data regimes.
+  # We take only a part of the data.
+  # To reproduce results from the paper, take a preset sampling: 
+  # WARNING: setting this to False overwrites the samplings in the "reduced_data_mappings" folder! 
+  use_preset_sampling: True
+  # if use_preset_sampling is True, then the "reduced_data_mappings" 
+  # folder should contain two files: 
+  # 1. 'reduced_train_data_{max_samples_per_class}.json'
+  # 2. 'reduced_test_data_{max_samples_per_class}.json'
+  # according to the value of max_samples_per_class:
+  max_samples_per_class: 1000  
+  report_step_frequency: 10
+  datadir: real_hd_data  # WARNING: this requires you've downloaded the dataset following the instructions!
+  # Number of classes per task :
+  # two of them are ZdAs, one is a type B and the other a type A
+  N_WAY: 4
+  N_SHOT: 5   # Number of samples per class in the support set
+  N_QUERY: 50  # Number of samples per class in the query set
+  n_train_tasks: 100    # For speedy tests, reduce here..
+  n_eval_tasks: 20     # For speedy tests, reduce here..
+  num_workers: 10
+  h_dim: 1024
+  norm: batch
   dropout: 0.1
-  patience: 8
-  lambda_os: 1
-  N_SHOT: 5
-  N_QUERY: 15
-logging:
-  report_step_frequency: 100
+  device: cuda
+  processor_attention_heads: 8
+  pos_weight_1: 1  # weight of type B zdas for BCE loss 
+  pos_weight_2: 3    # weight of type A zdas for BCE loss
+  lr: 0.001
+  n_epochs: 120
+  patience: 40
+  max_prototype_buffer_micro: 17    # maximum number of discoverable micro-clusters
+  max_prototype_buffer_macro: 7    # maximum number of discoverable macro-clusters
+  lambda_os: 1   # relative weight of open-set vs closed-set loss
+  balanced_acc_n_w: 0.5  # negative relative weight of zdas for computing the balanced accuracy
+  attr_w: 1   # weight of the attractive force in manifold learning.
+  rep_w: 1   # weight of the repulsive force in manifold learning.
+  curriculum:
+    micro_zdas:
+      - DDoS_TCP        # Type B
+      - DDoS_HTTP       # Type B
+      - XSS             # Type B
+      - MITM            # Type A
+      - DoS_HTTP        # Type B
+      - DoS_UDP         # Type B
+      - Ransomware      # Type B
+      - Scan_Service    # Type A
+      - Scan_OS         # Type A
+
+    micro_type_A_zdas:
+      - MITM              # Type A
+      - Scan_Service      # Type A
+      - Scan_OS           # Type A
+
+    micro_type_B_zdas:
+      - DDoS_TCP          # Type B
+      - DDoS_HTTP         # Type B
+      - DoS_HTTP          # Type B
+      - DoS_UDP           # Type B
+      - XSS               # Type B
+      - Ransomware        # Type B
+
+    train_type_B_micro_classes:
+      - DDoS_TCP          # Type B
+      - XSS               # Type B
+      - DoS_UDP           # Type B
+
+    test_type_B_micro_classes:
+      - DoS_HTTP          # Type B
+      - Ransomware        # Type B
+      - DDoS_HTTP         # Type B
+
+    test_type_A_macro_classes:
+      - MITM              # Type A
+
+    train_type_A_macro_classes:
+      - Scan              # Type A
