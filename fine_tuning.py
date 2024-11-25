@@ -39,7 +39,7 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
-from tqdm.notebook import tqdm
+from tqdm import tqdm, trange
 import numpy as np
 from omegaconf import DictConfig, OmegaConf 
 import hydra
@@ -184,7 +184,7 @@ def init_models(cfg):
     # Make these objects accessible everywhere
     global encoder, processor_1, decoder_1a_criterion, decoder_1_b, decoder_1b_criterion
     global processor_2, decoder_2a_criterion, decoder_2_b, decoder_2b_criterion
-    global processor_optimizer, os_optimizer, trainable_decoders
+    global enc_proc_optimizer, os_optimizer, trainable_decoders
 
     # Encoder
     encoder = resnet18().to(device)
@@ -202,7 +202,7 @@ def init_models(cfg):
     decoder_1a_criterion = nn.CrossEntropyLoss()
 
     # You may need to change the params in the constructor to fit the decoder module.
-    decoder_class = getattr(models, cfg.pretraining.decoder)
+    decoder_class = getattr(models, cfg.fine_tuning.decoder)
     decoder_1_b = decoder_class(
                     in_dim=cfg.fine_tuning.N_WAY-2, # Subtrack a type A and a type B ZdA attack
                     dropout=cfg.fine_tuning.dropout,
@@ -240,7 +240,7 @@ def init_models(cfg):
             list(processor_1.parameters()) + \
             list(processor_2.parameters())
 
-    processor_optimizer = optim.Adam(
+    enc_proc_optimizer = optim.Adam(
         params_for_processor_optimizer,
         lr=cfg.fine_tuning.lr)
     if any(param.requires_grad for param in decoder_1_b.parameters()): 
@@ -531,15 +531,17 @@ def second_phase_simple(
 def load_pretrained_processors_weights(cfg):
     processor_1.load_state_dict(torch.load(cfg.models_dir+'/SufflePretrain_H1024_proc_1.pt', weights_only=True))
     processor_2.load_state_dict(torch.load(cfg.models_dir+'/SufflePretrain_H1024_proc_2.pt', weights_only=True))
-    processor_1.eval()
-    processor_2.eval()
 
-    # Freeze the pre-trained processor
-    for param in processor_1.parameters():
-        param.requires_grad = False
-    # Freeze the pre-trained processor
-    for param in processor_2.parameters():
-        param.requires_grad = False
+    if not cfg.fine_tuning.retrain_processors:
+        processor_1.eval()
+        processor_2.eval()
+
+        # Freeze the pre-trained processor
+        for param in processor_1.parameters():
+            param.requires_grad = False
+        # Freeze the pre-trained processor
+        for param in processor_2.parameters():
+            param.requires_grad = False
 
 
 def train(cfg, train_loader, test_loader):
@@ -551,13 +553,13 @@ def train(cfg, train_loader, test_loader):
     max_eval_TNR = torch.zeros(1, device=device)
     epochs_without_improvement = 0
 
-    for epoch in tqdm(range(cfg.fine_tuning.n_epochs)):
+    for epoch in trange(cfg.fine_tuning.n_epochs):
 
         # TRAIN
         encoder.train()
         decoder_1_b.train()
         decoder_2_b.train()
-        if not cfg.fine_tuning.pretrained_processors:
+        if not cfg.fine_tuning.pretrained_processors or cfg.fine_tuning.retrain_processors:
             processor_1.train()
             processor_2.train()
         
@@ -602,9 +604,9 @@ def train(cfg, train_loader, test_loader):
             # Learning
             if trainable_decoders:
                 proc_loss = proc_1_loss + proc_2_loss
-                processor_optimizer.zero_grad()
+                enc_proc_optimizer.zero_grad()
                 proc_loss.backward()
-                processor_optimizer.step()
+                enc_proc_optimizer.step()
 
                 os_loss = zda_detect_loss + type_a_detect_loss
                 os_optimizer.zero_grad()
@@ -612,9 +614,9 @@ def train(cfg, train_loader, test_loader):
                 os_optimizer.step()
             else:
                 proc_loss = proc_1_loss + proc_2_loss + zda_detect_loss + type_a_detect_loss
-                processor_optimizer.zero_grad()
+                enc_proc_optimizer.zero_grad()
                 proc_loss.backward()
-                processor_optimizer.step()
+                enc_proc_optimizer.step()
 
 
             if step % cfg.fine_tuning.report_step_frequency == 0:

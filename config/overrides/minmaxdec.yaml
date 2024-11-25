@@ -1,10 +1,10 @@
 pretraining:
-  wandb: True
+  wandb: False
   decoder: MinMaxDecoder
   run_name: Pretraining_MinMaxDec
   patience: 20
-  save_model: True
+  save_model: False
 fine_tuning:
-  wandb: True
+  wandb: False
   decoder: MinMaxDecoder
   datadir: /home/jovyan/shared/jesus/datasets/BoT_IoT_imgs

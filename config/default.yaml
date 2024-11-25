@@ -42,6 +42,7 @@ fine_tuning:
   track_gradients: False  # requires wandb to be True
   run_name: 'Training_EncDec'
   pretrained_processors: True
+  retrain_processors: False  # if True, the pre-trained processors will be re-trained. If pretrained_processors is False, this will be ignored.
   save_model: False
   pretrained_processor_1: SufflePretrain_H1024_proc_1.pt
   pretrained_processor_2: SufflePretrain_H1024_proc_2.pt
