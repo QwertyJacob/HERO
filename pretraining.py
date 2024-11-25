@@ -59,6 +59,7 @@ def save_stuff(cfg, prefix):
         processor_2.state_dict(),
         cfg.models_dir+'/'+prefix+'_proc_2.pt')
 
+
 def init_data(cfg):
     global micro_zdas, micro_type_A_ZdAs, micro_type_B_ZdAs, micro_classes, macro_classes
 
@@ -153,7 +154,7 @@ def init_models(cfg):
     # Make these objects accessible everywhere
     global encoder, processor_1, decoder_1a_criterion, decoder_1_b, decoder_1b_criterion
     global processor_2, decoder_2a_criterion, decoder_2_b, decoder_2b_criterion
-    global processor_optimizer, os_optimizer
+    global processor_optimizer, os_optimizer, trainable_decoders
 
     # Encoder
     encoder = models.Encoder(
@@ -173,7 +174,10 @@ def init_models(cfg):
 
     decoder_1a_criterion = nn.CrossEntropyLoss()
 
-    decoder_1_b = models.Confidence_Decoder(
+    # You may need to change the params in the constructor to fit the decoder module.
+    decoder_class = getattr(models, cfg.pretraining.decoder)
+
+    decoder_1_b = decoder_class(
                     in_dim=cfg.pretraining.N_WAY-2, # Subtrack a type A and a type B ZdA attack
                     dropout=cfg.pretraining.dropout,
                     device=cfg.pretraining.device
@@ -192,7 +196,7 @@ def init_models(cfg):
 
     decoder_2a_criterion = nn.CrossEntropyLoss().to(cfg.pretraining.device)
 
-    decoder_2_b = models.Confidence_Decoder(
+    decoder_2_b = decoder_class(
                     in_dim=cfg.pretraining.N_WAY-1, # Only type A attack will be discarded from known realm
                     dropout=cfg.pretraining.dropout,
                     device=cfg.pretraining.device
@@ -211,13 +215,19 @@ def init_models(cfg):
         params_for_processor_optimizer,
         lr=cfg.pretraining.lr)
 
-    params_for_os_optimizer = \
-            list(decoder_1_b.parameters()) + \
-            list(decoder_2_b.parameters())
 
-    os_optimizer = optim.Adam(
-        params_for_os_optimizer,
-        lr=cfg.pretraining.lr)
+    if any(param.requires_grad for param in decoder_1_b.parameters()): 
+        trainable_decoders = True
+
+        params_for_os_optimizer = \
+                list(decoder_1_b.parameters()) + \
+                list(decoder_2_b.parameters())
+
+        os_optimizer = optim.Adam(
+            params_for_os_optimizer,
+            lr=cfg.pretraining.lr)
+    else: 
+        trainable_decoders = False
 
 
 def init_logging(cfg, train_loader, test_loader):
@@ -226,37 +236,25 @@ def init_logging(cfg, train_loader, test_loader):
     if cfg.pretraining.wandb:
         wandb.login()
 
-    wandb.init(project='HERO',
-               name=cfg.pretraining.run_name,
-               mode=("online" if wb else "disabled"),
-               config={"N_SHOT": cfg.pretraining.N_SHOT,
-                       "N_QUERY": cfg.pretraining.N_QUERY,
-                       "N_WAY": cfg.pretraining.N_WAY,
+    pretraining_conf = dict(cfg.pretraining)
+    additional_confs = {
                        "test_classes": test_loader.dataset.micro_classes,
                        "train_classes": train_loader.dataset.micro_classes,
                        "train_batch_size": iter(train_loader).__next__()[0].shape[1],
                        "len(train_loader)": len(train_loader),
                        "len(test_dataset)": len(test_loader.dataset),
-                       "max_prototype_buffer_micro": cfg.pretraining.max_prototype_buffer_micro,
-                       "max_prototype_buffer_macro": cfg.pretraining.max_prototype_buffer_macro,
-                       "device": device,
-                       "natural_inputs_dim": cfg.pretraining.natural_inputs_dim,
-                       "h_dim": cfg.pretraining.h_dim,
-                       "lr": cfg.pretraining.lr,
-                       "n_epochs": cfg.pretraining.n_epochs,
-                       "norm": cfg.pretraining.norm,
-                       "dropout": cfg.pretraining.dropout,
-                       "patience": cfg.pretraining.patience,
                        'micro_zdas': micro_zdas,
                        'micro_type_A_ZdAs': micro_type_A_ZdAs,
                        'micro_type_B_ZdAs': micro_type_B_ZdAs,
-                       "lambda_os": cfg.pretraining.lambda_os,
-                       "positive_weight_1": cfg.pretraining.pos_weight_1,
-                       "positive_weight_2": cfg.pretraining.pos_weight_2,
-                       "balanced_acc_n_w": cfg.pretraining.balanced_acc_n_w,
-                       "attr_w": cfg.pretraining.attr_w,
-                       "rep_w": cfg.pretraining.rep_w
-                       })
+                       }
+
+    pretraining_conf.update(additional_confs)
+
+    wandb.init(project='HERO',
+               name=cfg.pretraining.run_name,
+               mode=("online" if wb else "disabled"),
+               config=pretraining_conf)
+
     if cfg.pretraining.wandb and cfg.pretraining.track_gradients:
         wandb.watch(processor_1)
         wandb.watch(processor_2)
@@ -566,15 +564,24 @@ def pretrain(cfg, train_loader, test_loader):
                     hiddens_1)
 
             # Learning
-            proc_loss = proc_1_loss + proc_2_loss
-            processor_optimizer.zero_grad()
-            proc_loss.backward()
-            processor_optimizer.step()
 
-            os_loss = zda_detect_loss + os_2_loss
-            os_optimizer.zero_grad()
-            os_loss.backward()
-            os_optimizer.step()
+            if trainable_decoders:
+                proc_loss = proc_1_loss + proc_2_loss
+                processor_optimizer.zero_grad()
+                proc_loss.backward()
+                processor_optimizer.step()
+
+                os_loss = zda_detect_loss + os_2_loss
+                os_optimizer.zero_grad()
+                os_loss.backward()
+                os_optimizer.step()
+            
+            else: 
+                proc_loss = proc_1_loss + proc_2_loss + zda_detect_loss + os_2_loss
+                processor_optimizer.zero_grad()
+                proc_loss.backward()
+                processor_optimizer.step()
+
 
             if step % cfg.pretraining.report_step_frequency == 0:
                 utils.reporting_simple(
@@ -717,7 +724,6 @@ def pretrain(cfg, train_loader, test_loader):
         wandb.finish()
 
 
-
 @hydra.main(config_path="config", config_name="default", version_base="1.2")
 def main(cfg: DictConfig) -> None:
     global wb, device
@@ -731,7 +737,7 @@ def main(cfg: DictConfig) -> None:
         except:
             print('Unsuccesfully tried to use the configuration override: ',cfg.override)
 
-    print(cfg)
+    print(cfg.pretraining)
     wb = cfg.pretraining.wandb
     device = cfg.pretraining.device
     torch.manual_seed(cfg.seed) # for reproducibility

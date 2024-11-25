@@ -1291,6 +1291,26 @@ class Prototypical_Network(nn.Module):
 """
 DECODERS:
 """
+class MinMaxDecoder(nn.Module):
+    def __init__(
+            self,
+            **kwargs):
+        super(MinMaxDecoder, self).__init__()
+
+        self.device = kwargs['device']
+
+    def forward(
+            self,
+            scores):
+        # Assumes to receive in input only the scores w.r.t known classes 
+        # which is in fact the most realistic assumption :)
+
+        # take the inverse of the scores (i.e. the distances to the known centroids)
+        # and take the minimum distance. 
+        scores = (1 - scores.unsqueeze(-1)).min(1)[0]
+        # is that minimum distance far enough? then you're a zda!
+        unknown_indicators = torch.sigmoid(scores)
+        return unknown_indicators
 
 
 class Simple_Decoder(nn.Module):
@@ -1368,16 +1388,14 @@ class DotProd_Decoder(nn.Module):
 class Confidence_Decoder(nn.Module):
     def __init__(
             self,
-            in_dim,
-            dropout,
-            device):
+            **kwargs):
 
         super(Confidence_Decoder, self).__init__()
 
         self.score_transform = nn.Linear(
-            in_features=in_dim,
+            in_features=kwargs['in_dim'],
             out_features=1)
-        self.device = device
+        self.device = kwargs['device']
 
     def forward(
             self,

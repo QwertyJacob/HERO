@@ -1,0 +1,7 @@
+pretraining:
+  wandb: True
+  decoder: MinMaxDecoder
+fine_tuning:
+  wandb: True
+  decoder: MinMaxDecoder
+  datadir: /home/jovyan/shared/jesus/datasets/BoT_IoT_imgs

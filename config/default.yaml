@@ -35,7 +35,7 @@ pretraining:
   balanced_acc_n_w: 0.5  # negative relative weight of zdas for computing the balanced accuracy
   attr_w: 1   # weight of the attractive force in manifold learning.
   rep_w: 1   # weight of the repulsive force in manifold learning.
-
+  decoder: Confidence_Decoder # The neural architecture of the decoder modules, has to be implemented in HERO.models.py
 
 fine_tuning:
   wandb: False
@@ -82,6 +82,7 @@ fine_tuning:
   balanced_acc_n_w: 0.5  # negative relative weight of zdas for computing the balanced accuracy
   attr_w: 1   # weight of the attractive force in manifold learning.
   rep_w: 1   # weight of the repulsive force in manifold learning.
+  decoder: Confidence_Decoder # The neural architecture of the decoder modules, has to be implemented in HERO.models.py
   curriculum:
     micro_zdas:
       - DDoS_TCP        # Type B
