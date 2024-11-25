@@ -1,6 +1,9 @@
 pretraining:
   wandb: True
   decoder: MinMaxDecoder
+  run_name: Pretraining_MinMaxDec
+  patience: 20
+  save_model: True
 fine_tuning:
   wandb: True
   decoder: MinMaxDecoder

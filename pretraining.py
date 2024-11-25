@@ -51,13 +51,13 @@ import NAR.masking as masking
 import NAR.models as models
 
 
-def save_stuff(cfg, prefix):
+def save_stuff(cfg):
     torch.save(
         processor_1.state_dict(),
-        cfg.models_dir+'/'+prefix+'_proc_1.pt')
+        cfg.models_dir+'/'+cfg.pretraining.run_name+'_proc_1.pt')
     torch.save(
         processor_2.state_dict(),
-        cfg.models_dir+'/'+prefix+'_proc_2.pt')
+        cfg.models_dir+'/'+cfg.pretraining.run_name+'_proc_2.pt')
 
 
 def init_data(cfg):
@@ -708,7 +708,7 @@ def pretrain(cfg, train_loader, test_loader):
             if curr_TNR > max_eval_TNR:
                 max_eval_TNR = curr_TNR
                 epochs_without_improvement = 0
-                if cfg.pretraining.save_model: save_stuff(cfg, run_name)
+                if cfg.pretraining.save_model: save_stuff(cfg)
             else:
                 epochs_without_improvement += 1
 
