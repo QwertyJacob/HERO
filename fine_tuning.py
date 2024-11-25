@@ -53,16 +53,16 @@ import NAR.models as models
 from torchvision.models import resnet18
 
 
-def save_stuff(cfg, prefix):
+def save_stuff(cfg):
     torch.save(
         encoder.state_dict(),
-        cfg.models_dir+'/'+prefix+'_encoder.pt')
+        cfg.models_dir+'/'+cfg.fine_tuning.run_name+'_encoder.pt')
     torch.save(
         decoder_1_b.state_dict(),
-        cfg.models_dir+'/'+prefix+'_dec_1_b.pt')
+        cfg.models_dir+'/'+cfg.fine_tuning.run_name+'_dec_1_b.pt')
     torch.save(
         decoder_2_b.state_dict(),
-        cfg.models_dir+'/'+prefix+'_dec_2_b.pt')
+        cfg.models_dir+'/'+cfg.fine_tuning.run_name+'_dec_2_b.pt')
 
 
 def init_data(cfg):
@@ -184,7 +184,7 @@ def init_models(cfg):
     # Make these objects accessible everywhere
     global encoder, processor_1, decoder_1a_criterion, decoder_1_b, decoder_1b_criterion
     global processor_2, decoder_2a_criterion, decoder_2_b, decoder_2b_criterion
-    global processor_optimizer, os_optimizer
+    global processor_optimizer, os_optimizer, trainable_decoders
 
     # Encoder
     encoder = resnet18().to(device)
@@ -201,7 +201,9 @@ def init_models(cfg):
 
     decoder_1a_criterion = nn.CrossEntropyLoss()
 
-    decoder_1_b = models.Confidence_Decoder(
+    # You may need to change the params in the constructor to fit the decoder module.
+    decoder_class = getattr(models, cfg.pretraining.decoder)
+    decoder_1_b = decoder_class(
                     in_dim=cfg.fine_tuning.N_WAY-2, # Subtrack a type A and a type B ZdA attack
                     dropout=cfg.fine_tuning.dropout,
                     device=device
@@ -223,7 +225,7 @@ def init_models(cfg):
 
     decoder_2a_criterion = nn.CrossEntropyLoss().to(device)
 
-    decoder_2_b = models.Confidence_Decoder(
+    decoder_2_b = decoder_class(
                     in_dim=cfg.fine_tuning.N_WAY-1, # Only type A attack will be discarded from known realm
                     dropout=cfg.fine_tuning.dropout,
                     device=device
@@ -241,15 +243,17 @@ def init_models(cfg):
     processor_optimizer = optim.Adam(
         params_for_processor_optimizer,
         lr=cfg.fine_tuning.lr)
+    if any(param.requires_grad for param in decoder_1_b.parameters()): 
+        trainable_decoders = True
+        params_for_os_optimizer = \
+                list(decoder_1_b.parameters()) + \
+                list(decoder_2_b.parameters())
 
-    params_for_os_optimizer = \
-            list(decoder_1_b.parameters()) + \
-            list(decoder_2_b.parameters())
-
-    os_optimizer = optim.Adam(
-        params_for_os_optimizer,
-        lr=cfg.fine_tuning.lr)
-
+        os_optimizer = optim.Adam(
+            params_for_os_optimizer,
+            lr=cfg.fine_tuning.lr)
+    else:
+        trainable_decoders = False
 
 def init_logging(cfg, train_loader, test_loader):
     print('Initializing logging for ', cfg.fine_tuning.run_name)
@@ -257,37 +261,21 @@ def init_logging(cfg, train_loader, test_loader):
     if cfg.fine_tuning.wandb:
         wandb.login()
 
+    finetuning_conf = dict(cfg.fine_tuning)
+    additional_confs = {
+                    "test_classes": test_loader.dataset.micro_classes,
+                    "train_classes": train_loader.dataset.micro_classes,
+                    "train_batch_size": iter(train_loader).__next__()[0].shape[1],
+                    "len(train_loader)": len(train_loader),
+                    "len(test_dataset)": len(test_loader.dataset),
+                }
+
+    finetuning_conf.update(additional_confs)
+
     wandb.init(project='HERO',
                name=cfg.fine_tuning.run_name,
                mode=("online" if wb else "disabled"),
-               config={"N_SHOT": cfg.fine_tuning.N_SHOT,
-                       "N_QUERY": cfg.fine_tuning.N_QUERY,
-                       "N_WAY": cfg.fine_tuning.N_WAY,
-                       "test_classes": test_loader.dataset.micro_classes,
-                       "train_classes": train_loader.dataset.micro_classes,
-                       "train_batch_size": iter(train_loader).__next__()[0].shape[1],
-                       "len(train_loader)": len(train_loader),
-                       "len(test_dataset)": len(test_loader.dataset),
-                       "max_prototype_buffer_micro": cfg.fine_tuning.max_prototype_buffer_micro,
-                       "max_prototype_buffer_macro": cfg.fine_tuning.max_prototype_buffer_macro,
-                       "device": device,
-                       "natural_inputs_dim": "512x512",
-                       "h_dim": cfg.fine_tuning.h_dim,
-                       "lr": cfg.fine_tuning.lr,
-                       "n_epochs": cfg.fine_tuning.n_epochs,
-                       "norm": cfg.fine_tuning.norm,
-                       "dropout": cfg.fine_tuning.dropout,
-                       "patience": cfg.fine_tuning.patience,
-                       'micro_zdas': micro_zdas,
-                       'micro_type_A_ZdAs': micro_type_A_ZdAs,
-                       'micro_type_B_ZdAs': micro_type_B_ZdAs,
-                       "lambda_os": cfg.fine_tuning.lambda_os,
-                       "positive_weight_1": cfg.fine_tuning.pos_weight_1,
-                       "positive_weight_2": cfg.fine_tuning.pos_weight_2,
-                       "balanced_acc_n_w": cfg.fine_tuning.balanced_acc_n_w,
-                       "attr_w": cfg.fine_tuning.attr_w,
-                       "rep_w": cfg.fine_tuning.rep_w
-                       })
+               config=finetuning_conf)
     if cfg.fine_tuning.wandb and cfg.fine_tuning.track_gradients:
         wandb.watch(processor_1)
         wandb.watch(processor_2)
@@ -612,15 +600,22 @@ def train(cfg, train_loader, test_loader):
                     hiddens_1)
 
             # Learning
-            proc_loss = proc_1_loss + proc_2_loss
-            processor_optimizer.zero_grad()
-            proc_loss.backward()
-            processor_optimizer.step()
+            if trainable_decoders:
+                proc_loss = proc_1_loss + proc_2_loss
+                processor_optimizer.zero_grad()
+                proc_loss.backward()
+                processor_optimizer.step()
 
-            os_loss = zda_detect_loss + type_a_detect_loss
-            os_optimizer.zero_grad()
-            os_loss.backward()
-            os_optimizer.step()
+                os_loss = zda_detect_loss + type_a_detect_loss
+                os_optimizer.zero_grad()
+                os_loss.backward()
+                os_optimizer.step()
+            else:
+                proc_loss = proc_1_loss + proc_2_loss + zda_detect_loss + type_a_detect_loss
+                processor_optimizer.zero_grad()
+                proc_loss.backward()
+                processor_optimizer.step()
+
 
             if step % cfg.fine_tuning.report_step_frequency == 0:
                 utils.reporting_simple(
@@ -745,7 +740,7 @@ def train(cfg, train_loader, test_loader):
             if curr_TNR > max_eval_TNR:
                 max_eval_TNR = curr_TNR
                 epochs_without_improvement = 0
-                if cfg.fine_tuning.save_model: save_stuff(run_name)
+                if cfg.fine_tuning.save_model: save_stuff(cfg)
             else:
                 epochs_without_improvement += 1
 
@@ -774,7 +769,7 @@ def main(cfg: DictConfig) -> None:
         except:
             print('Unsuccesfully tried to use the configuration override: ',cfg.override)
 
-    print(cfg)
+    print(cfg.fine_tuning)
     wb = cfg.fine_tuning.wandb
     device = cfg.fine_tuning.device
     torch.manual_seed(cfg.seed) # for reproducibility
