@@ -3,7 +3,8 @@ command:
   - ${interpreter}
   - ${program}
   - ${args_no_hyphens}
-  - override=kr_alpha
+  - override=log
+  - fine_tuning.run_name=hpo_kr_alpha
 method: bayes
 metric:
   goal: maximize
@@ -11,11 +12,10 @@ metric:
 parameters:
   fine_tuning.kr_alpha:
     values:
+      - 0.01
+      - 0.05
       - 0.1
-      - 0.2
       - 0.3
-      - 0.4
       - 0.5
-      - 0.6
       - 0.7
 program: fine_tuning.py
