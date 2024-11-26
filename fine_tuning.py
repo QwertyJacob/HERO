@@ -404,7 +404,7 @@ def first_phase_simple(
     metrics_dict['OS_B_accuracies'].append(epoch_zda_dect_acc.item())
 
     # Processor loss:
-    proc_1_loss = micro_classification_loss + micro_kernel_loss
+    proc_1_loss = micro_classification_loss + cfg.fine_tuning.kr_alpha * micro_kernel_loss
 
     return proc_1_loss, \
         zda_detection_loss, \
@@ -512,7 +512,7 @@ def second_phase_simple(
                 n_w=cfg.fine_tuning.balanced_acc_n_w
                 )
 
-    proc_2_loss = macro_classification_loss + proc_2_reg_loss
+    proc_2_loss = macro_classification_loss + cfg.fine_tuning.kr_alpha *proc_2_reg_loss
 
     # for reporting:
     metrics_dict['losses_2a'].append(macro_classification_loss.item())
