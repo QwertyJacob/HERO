@@ -84,6 +84,7 @@ fine_tuning:
   attr_w: 1   # weight of the attractive force in manifold learning.
   rep_w: 1   # weight of the repulsive force in manifold learning.
   decoder: Confidence_Decoder # The neural architecture of the decoder modules, has to be implemented in HERO.models.py
+  kr_alpha: 1  # The weight of the kernel regression loss in the processor/encoder loss. 
   curriculum:
     micro_zdas:
       - DDoS_TCP        # Type B
