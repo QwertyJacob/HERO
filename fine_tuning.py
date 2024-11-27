@@ -184,7 +184,7 @@ def init_models(cfg):
     # Make these objects accessible everywhere
     global encoder, processor_1, decoder_1a_criterion, decoder_1_b, decoder_1b_criterion
     global processor_2, decoder_2a_criterion, decoder_2_b, decoder_2b_criterion
-    global enc_proc_optimizer, os_optimizer, trainable_decoders
+    global enc_optimizer, proc_optimizer, os_optimizer, trainable_decoders
 
     # Encoder
     encoder = resnet18().to(device)
@@ -235,14 +235,21 @@ def init_models(cfg):
         pos_weight=torch.Tensor([cfg.fine_tuning.pos_weight_2])).to(device)
 
 
+    params_for_encoder_optimizer = \
+            list(encoder.parameters())
+
     params_for_processor_optimizer = \
-            list(encoder.parameters()) + \
             list(processor_1.parameters()) + \
             list(processor_2.parameters())
 
-    enc_proc_optimizer = optim.Adam(
-        params_for_processor_optimizer,
+    enc_optimizer = optim.Adam(
+        params_for_encoder_optimizer,
         lr=cfg.fine_tuning.lr)
+
+    proc_optimizer = optim.Adam(
+        params_for_processor_optimizer,
+        lr=cfg.fine_tuning.processor_lr)
+
     if any(param.requires_grad for param in decoder_1_b.parameters()): 
         trainable_decoders = True
         params_for_os_optimizer = \
@@ -604,9 +611,11 @@ def train(cfg, train_loader, test_loader):
             # Learning
             if trainable_decoders:
                 proc_loss = proc_1_loss + proc_2_loss
-                enc_proc_optimizer.zero_grad()
+                enc_optimizer.zero_grad()
+                proc_optimizer.zero_grad()
                 proc_loss.backward()
-                enc_proc_optimizer.step()
+                proc_optimizer.step()
+                enc_optimizer.step()
 
                 os_loss = zda_detect_loss + type_a_detect_loss
                 os_optimizer.zero_grad()
@@ -614,9 +623,11 @@ def train(cfg, train_loader, test_loader):
                 os_optimizer.step()
             else:
                 proc_loss = proc_1_loss + proc_2_loss + zda_detect_loss + type_a_detect_loss
-                enc_proc_optimizer.zero_grad()
+                enc_optimizer.zero_grad()
+                proc_optimizer.zero_grad()
                 proc_loss.backward()
-                enc_proc_optimizer.step()
+                proc_optimizer.step()
+                enc_optimizer.step()
 
 
             if step % cfg.fine_tuning.report_step_frequency == 0:

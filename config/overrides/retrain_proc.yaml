@@ -1,5 +1,4 @@
 fine_tuning:
   wandb: True
-  run_name: Retraining_FT_ConfDec
   datadir: /home/jovyan/shared/jesus/datasets/BoT_IoT_imgs
   retrain_processors: True

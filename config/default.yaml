@@ -43,6 +43,7 @@ fine_tuning:
   run_name: 'Training_EncDec'
   pretrained_processors: True
   retrain_processors: False  # if True, the pre-trained processors will be re-trained. If pretrained_processors is False, this will be ignored.
+  processor_lr: 0.0001 # if retrain_processors is True, this will be used 
   save_model: False
   pretrained_processor_1: SufflePretrain_H1024_proc_1.pt
   pretrained_processor_2: SufflePretrain_H1024_proc_2.pt
@@ -84,7 +85,7 @@ fine_tuning:
   attr_w: 1   # weight of the attractive force in manifold learning.
   rep_w: 1   # weight of the repulsive force in manifold learning.
   decoder: Confidence_Decoder # The neural architecture of the decoder modules, has to be implemented in HERO.models.py
-  kr_alpha: 1  # The weight of the kernel regression loss in the processor/encoder loss. 
+  kr_alpha: 0.1  # The weight of the kernel regression loss in the processor/encoder loss. 
   curriculum:
     micro_zdas:
       - DDoS_TCP        # Type B
