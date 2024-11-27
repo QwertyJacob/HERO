@@ -39,7 +39,7 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
-from tqdm.notebook import tqdm
+from tqdm import tqdm, trange
 import numpy as np
 from omegaconf import DictConfig, OmegaConf 
 import hydra
@@ -154,7 +154,7 @@ def init_models(cfg):
     # Make these objects accessible everywhere
     global encoder, processor_1, decoder_1a_criterion, decoder_1_b, decoder_1b_criterion
     global processor_2, decoder_2a_criterion, decoder_2_b, decoder_2b_criterion
-    global processor_optimizer, os_optimizer, trainable_decoders
+    global enc_optimizer, proc_optimizer, os_optimizer, trainable_decoders
 
     # Encoder
     encoder = models.Encoder(
@@ -205,13 +205,18 @@ def init_models(cfg):
     decoder_2b_criterion = nn.BCEWithLogitsLoss(
         pos_weight=torch.Tensor([cfg.pretraining.pos_weight_2])).to(cfg.pretraining.device)
 
+    params_for_encoder_optimizer = \
+            list(encoder.parameters())
 
     params_for_processor_optimizer = \
-            list(encoder.parameters()) + \
             list(processor_1.parameters()) + \
             list(processor_2.parameters())
 
-    processor_optimizer = optim.Adam(
+    enc_optimizer = optim.Adam(
+        params_for_encoder_optimizer,
+        lr=cfg.pretraining.enc_lr)
+
+    proc_optimizer = optim.Adam(
         params_for_processor_optimizer,
         lr=cfg.pretraining.lr)
 
@@ -225,7 +230,7 @@ def init_models(cfg):
 
         os_optimizer = optim.Adam(
             params_for_os_optimizer,
-            lr=cfg.pretraining.lr)
+            lr=cfg.pretraining.dec_lr)
     else: 
         trainable_decoders = False
 
@@ -253,7 +258,8 @@ def init_logging(cfg, train_loader, test_loader):
     wandb.init(project='HERO',
                name=cfg.pretraining.run_name,
                mode=("online" if wb else "disabled"),
-               config=pretraining_conf)
+               config=pretraining_conf,
+               tags=['PT'])
 
     if cfg.pretraining.wandb and cfg.pretraining.track_gradients:
         wandb.watch(processor_1)
@@ -567,9 +573,11 @@ def pretrain(cfg, train_loader, test_loader):
 
             if trainable_decoders:
                 proc_loss = proc_1_loss + proc_2_loss
-                processor_optimizer.zero_grad()
+                enc_optimizer.zero_grad()
+                proc_optimizer.zero_grad()
                 proc_loss.backward()
-                processor_optimizer.step()
+                proc_optimizer.step()
+                enc_optimizer.step()
 
                 os_loss = zda_detect_loss + os_2_loss
                 os_optimizer.zero_grad()
@@ -578,9 +586,11 @@ def pretrain(cfg, train_loader, test_loader):
             
             else: 
                 proc_loss = proc_1_loss + proc_2_loss + zda_detect_loss + os_2_loss
-                processor_optimizer.zero_grad()
+                enc_optimizer.zero_grad()
+                proc_optimizer.zero_grad()
                 proc_loss.backward()
-                processor_optimizer.step()
+                proc_optimizer.step()
+                enc_optimizer.step()
 
 
             if step % cfg.pretraining.report_step_frequency == 0:

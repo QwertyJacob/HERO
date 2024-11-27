@@ -27,6 +27,8 @@ pretraining:
   pos_weight_1: 2.5  # weight of type B zdas for BCE loss 
   pos_weight_2: 5    # weight of type A zdas for BCE loss
   lr: 0.001
+  enc_lr: 0.001
+  dec_lr: 0.001
   n_epochs: 60
   patience: 8
   max_prototype_buffer_micro: 60    # maximum number of discoverable micro-clusters
