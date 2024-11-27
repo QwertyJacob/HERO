@@ -50,8 +50,7 @@ import HERO.plotting_utils as pu
 import HERO.masking as masking
 import HERO.models as models
 
-from torchvision.models import resnet18
-
+import torchvision.models as torch_vision_models
 
 def save_stuff(cfg):
     torch.save(
@@ -186,11 +185,21 @@ def init_models(cfg):
     global processor_2, decoder_2a_criterion, decoder_2_b, decoder_2b_criterion
     global enc_optimizer, proc_optimizer, os_optimizer, trainable_decoders
 
+    encoder_class = getattr(torch_vision_models, cfg.fine_tuning.encoder)
+
     # Encoder
-    encoder = resnet18().to(device)
-    encoder.fc = nn.Sequential(nn.Flatten(),
-                           nn.Linear(512,
-                                     cfg.fine_tuning.h_dim)).to(device)
+    encoder = encoder_class().to(device)
+    if 'resnet' in encoder_class.__name__:
+        encoder.fc = nn.Sequential(nn.Flatten(),
+                            nn.Linear(encoder.fc.in_features,
+                                        cfg.fine_tuning.h_dim)).to(device)
+    elif any(name in encoder_class.__name__ for name in ['mobilenet', 'efficientnet']):
+        encoder.classifier[-1] = nn.Linear(encoder.classifier[-1].in_features,
+                                        cfg.fine_tuning.h_dim, bias=True).to(device)
+
+    elif 'squeezenet' in encoder_class.__name__:
+        encoder = nn.Sequential(encoder, nn.Linear(1000, cfg.fine_tuning.h_dim)).to(device)
+
     # First phase:
     processor_1 = models.GAT_V5_Processor(
                     h_dim=cfg.fine_tuning.h_dim,

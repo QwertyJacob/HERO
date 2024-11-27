@@ -85,6 +85,10 @@ fine_tuning:
   attr_w: 1   # weight of the attractive force in manifold learning.
   rep_w: 1   # weight of the repulsive force in manifold learning.
   decoder: Confidence_Decoder # The neural architecture of the decoder modules, has to be implemented in HERO.models.py
+  # The encoder module, has to be a member of torchvision.models
+  # try with resnet18, resnet34, resnet50, mobilenet_v3_small, mobilenet_v3_large, resnext50_32x4d, squeezenet1_0, squeezenet1_1, efficientnet_b0, efficientnet_v2_s, etc...
+  encoder: resnet18 
+  
   kr_alpha: 0.1  # The weight of the kernel regression loss in the processor/encoder loss. 
   curriculum:
     micro_zdas:
