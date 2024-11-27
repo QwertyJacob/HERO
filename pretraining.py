@@ -44,11 +44,11 @@ import numpy as np
 from omegaconf import DictConfig, OmegaConf 
 import hydra
 
-import NAR.utils as utils
-import NAR.data_management as dm
-import NAR.plotting_utils as pu
-import NAR.masking as masking
-import NAR.models as models
+import HERO.utils as utils
+import HERO.data_management as dm
+import HERO.plotting_utils as pu
+import HERO.masking as masking
+import HERO.models as models
 
 
 def save_stuff(cfg):
