@@ -72,7 +72,7 @@ fine_tuning:
   num_workers: 10
   h_dim: 1024
   norm: batch
-  dropout: 0.1
+  dropout: 0.3  # For now this is used only for the encoder if it is a resnet one.
   device: cuda
   processor_attention_heads: 8
   pos_weight_1: 1  # weight of type B zdas for BCE loss 
