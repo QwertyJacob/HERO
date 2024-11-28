@@ -191,6 +191,7 @@ def init_models(cfg):
     encoder = encoder_class().to(device)
     if 'resnet' in encoder_class.__name__:
         encoder.fc = nn.Sequential(nn.Flatten(),
+                            nn.Dropout(cfg.fine_tuning.dropout),
                             nn.Linear(encoder.fc.in_features,
                                         cfg.fine_tuning.h_dim)).to(device)
     elif any(name in encoder_class.__name__ for name in ['mobilenet', 'efficientnet']):
@@ -270,6 +271,7 @@ def init_models(cfg):
             lr=cfg.fine_tuning.lr)
     else:
         trainable_decoders = False
+
 
 def init_logging(cfg, train_loader, test_loader):
     print('Initializing logging for ', cfg.fine_tuning.run_name)
