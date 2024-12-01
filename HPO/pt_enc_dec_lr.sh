@@ -5,9 +5,10 @@
 for enc_dec_lr in 0.00001 0.0001 0.00005 0.000001
 do
   cmd="CUDA_VISIBLE_DEVICES=1 python3 pretraining.py \
-    pretraining.run_name=pr_enc_dec_llr_${enc_dec_lr} \
+    pretraining.run_name=pr_enc_lr_${enc_dec_lr}_dec_lr_${enc_dec_lr} \
     override=log \
-    pretraining.enc_dec_lr=${enc_dec_lr} \
+    pretraining.enc_lr=${enc_dec_lr} \
+    pretraining.dec_lr=${enc_dec_lr} \
     pretraining.save_model=true"
   echo Issuing command: $cmd
   eval $cmd

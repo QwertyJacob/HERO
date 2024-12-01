@@ -3,7 +3,7 @@ command:
   - ${interpreter}
   - ${program}
   - ${args_no_hyphens}
-  - override=log
+  - override=dista_log
   - fine_tuning.run_name=hpo_kr_alpha
 method: bayes
 metric:
