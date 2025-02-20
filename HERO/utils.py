@@ -40,7 +40,7 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
 
-def report_auc_stuff(eval_type_a_labels, eval_type_a_preds, eval_zda_labels, eval_zda_preds, wb, wandb, step):
+def report_auc_stuff(eval_zda_labels, eval_zda_preds, eval_type_a_labels, eval_type_a_preds, wb, wandb, step):
     eval_type_a_labels = torch.cat(eval_type_a_labels, dim=0).cpu().numpy()
     eval_type_a_preds = torch.cat(eval_type_a_preds, dim=0).cpu().numpy()
 
